@@ -1,0 +1,7 @@
+{
+  "name": "AIDANCE",
+  "description": "A WeChat Mini-Program style daily journal where an AI butler helps you record moods, events, and expenses through conversation.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
