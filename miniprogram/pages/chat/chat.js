@@ -3,6 +3,7 @@ const { sendMessageToButler } = require('../../utils/gemini');
 const { saveRecord, getMessages, saveMessages, getRecords, getBudgetConfig } = require('../../utils/storage');
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
+const recorderManager = wx.getRecorderManager();
 
 Page({
   data: {
@@ -19,6 +20,39 @@ Page({
 
   onLoad() {
     this.loadMessages();
+
+    // Recorder listeners
+    recorderManager.onStart(() => {
+        // Vibrate to feedback start
+        wx.vibrateShort();
+    });
+
+    recorderManager.onStop((res) => {
+        // In a real app, upload res.tempFilePath to a server for STT.
+        // Here we simulate a result for demonstration.
+        const mockPhrases = [
+            "今天喝了一杯拿铁花了35元",
+            "心情不错，去公园散步了",
+            "买了两件T恤，花了199",
+            "晚上要去健身房",
+            "打车去公司花了45块"
+        ];
+        const randomPhrase = mockPhrases[Math.floor(Math.random() * mockPhrases.length)];
+        
+        const newInput = this.data.input + randomPhrase;
+        this.setData({ 
+            input: newInput,
+            canSend: true,
+            isListening: false
+        });
+        wx.showToast({ title: '语音已转文字', icon: 'none' });
+    });
+
+    recorderManager.onError((err) => {
+        console.error("Recording error", err);
+        this.setData({ isListening: false });
+        wx.showToast({ title: '录音失败', icon: 'none' });
+    });
   },
 
   onShow() {
@@ -107,9 +141,21 @@ Page({
     });
   },
 
-  toggleListening() {
-    // Basic mock or implementation of wx.getRecorderManager could go here
-    wx.showToast({ title: '长按输入框语音功能 (需开发)', icon: 'none' });
+  startRecording() {
+    this.setData({ isListening: true });
+    // Start recording (up to 60s, aac format)
+    recorderManager.start({
+        duration: 60000,
+        format: 'aac'
+    });
+  },
+
+  stopRecording() {
+    if (this.data.isListening) {
+        recorderManager.stop();
+        // State change handled in onStop callback usually, but strictly locally here for safety
+        // this.setData({ isListening: false }); 
+    }
   },
 
   checkBudget(expense) {

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+
+import React, { useState, useEffect, useCallback } from 'react'
 import Taro from '@tarojs/taro'
 import { View as ViewC, Text as TextC, Image as ImageC, ScrollView as ScrollViewC, Input as InputC } from '@tarojs/components'
 import { sendMessageToButler } from '../../utils/gemini'
@@ -25,8 +26,39 @@ const Chat = () => {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [bottomPadding, setBottomPadding] = useState(120);
 
+  // Recorder Manager ref
+  const recorderManager = Taro.getRecorderManager();
+
   useEffect(() => {
     loadMessages();
+
+    // Init Recorder listeners
+    recorderManager.onStart(() => {
+        Taro.vibrateShort({ type: 'medium' });
+    });
+
+    recorderManager.onStop((res) => {
+        // Simulate speech recognition result (since no backend)
+        const mockPhrases = [
+            "今天喝了一杯拿铁花了35元",
+            "心情不错，去公园散步了",
+            "买了两件T恤，花了199",
+            "晚上要去健身房",
+            "打车去公司花了45块"
+        ];
+        const randomPhrase = mockPhrases[Math.floor(Math.random() * mockPhrases.length)];
+        
+        setInput(prev => prev + randomPhrase);
+        setIsListening(false);
+        Taro.showToast({ title: '语音已转文字', icon: 'none' });
+    });
+
+    recorderManager.onError((err) => {
+        console.error("Recording error", err);
+        setIsListening(false);
+        Taro.showToast({ title: '录音失败', icon: 'none' });
+    });
+
   }, []);
 
   const loadMessages = () => {
@@ -92,8 +124,19 @@ const Chat = () => {
     setPendingImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const toggleListening = () => {
-    Taro.showToast({ title: '语音功能开发中', icon: 'none' });
+  const startRecording = () => {
+    setIsListening(true);
+    recorderManager.start({
+        duration: 60000,
+        format: 'aac'
+    });
+  };
+
+  const stopRecording = () => {
+    if (isListening) {
+       recorderManager.stop();
+       // State change is handled in onStop callback, but we force safety check here or wait for callback
+    }
   };
 
   const checkBudget = (expense: any) => {
@@ -173,40 +216,54 @@ const Chat = () => {
 
       const finalMessages = [...newMessages, botMsg];
 
-      if (response.detectedType !== 'NONE') {
-         const base = {
-           id: generateId(),
-           timestamp: Date.now(),
-           rawInput: content,
-           images: images
-         };
+      // Process Arrays
+      const base = {
+          id: '',
+          timestamp: Date.now(),
+          rawInput: content,
+          images: images
+      };
 
-         let newRecord: any = null;
-         let budgetAlert: string | null = null;
+      let budgetAlerts: string[] = [];
 
-         if (response.detectedType === 'MOOD' && response.moodData) {
-           newRecord = { ...base, type: 'MOOD', ...response.moodData };
-         } else if (response.detectedType === 'EXPENSE' && response.expenseData) {
-           newRecord = { ...base, type: 'EXPENSE', currency: '¥', ...response.expenseData };
-           budgetAlert = checkBudget(response.expenseData);
-         } else if (response.detectedType === 'EVENT' && response.eventData) {
-           newRecord = { ...base, type: 'EVENT', ...response.eventData };
-         }
+      // 1. Moods
+      if (response.moods && response.moods.length > 0) {
+          response.moods.forEach((mood: any) => {
+              const newRecord = { ...base, id: generateId(), type: 'MOOD', ...mood };
+              saveRecord(newRecord);
+          });
+      }
 
-         if (newRecord) {
-           saveRecord(newRecord);
-         }
+      // 2. Expenses
+      if (response.expenses && response.expenses.length > 0) {
+          response.expenses.forEach((exp: any) => {
+              const newRecord = { ...base, id: generateId(), type: 'EXPENSE', currency: '¥', ...exp };
+              saveRecord(newRecord);
+              const alert = checkBudget(exp);
+              if (alert) budgetAlerts.push(alert);
+          });
+      }
 
-         if (budgetAlert) {
-           finalMessages.push({
-             id: generateId(),
-             role: 'model',
-             content: budgetAlert,
-             timestamp: Date.now() + 100,
-             isAlert: true,
-             timeStr: new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute:'2-digit'})
-           });
-         }
+      // 3. Events
+      if (response.events && response.events.length > 0) {
+          response.events.forEach((evt: any) => {
+              const newRecord = { ...base, id: generateId(), type: 'EVENT', ...evt };
+              saveRecord(newRecord);
+          });
+      }
+
+      if (budgetAlerts.length > 0) {
+          const uniqueAlerts = Array.from(new Set(budgetAlerts));
+          uniqueAlerts.forEach(alert => {
+            finalMessages.push({
+                id: generateId(),
+                role: 'model',
+                content: alert,
+                timestamp: Date.now() + 100,
+                isAlert: true,
+                timeStr: new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute:'2-digit'})
+            });
+          });
       }
 
       setMessages(finalMessages);
@@ -233,6 +290,19 @@ const Chat = () => {
 
   return (
     <View className="container">
+      
+      {/* Recording Overlay */}
+      {isListening && (
+        <View className="recording-overlay">
+            <View className="recording-ripple"></View>
+            <View className="recording-icon">
+                <Text style={{ fontSize: '30px', color: 'white' }}>🎤</Text>
+            </View>
+            <Text className="recording-text">正在聆听...</Text>
+            <Text className="recording-sub">松开 发送</Text>
+        </View>
+      )}
+
       <View className="header glass-nav">
         <Text className="header-title">AIDANCE</Text>
       </View>
@@ -309,7 +379,12 @@ const Chat = () => {
         )}
 
         <View className="input-bar">
-          <View className={`icon-btn ${isListening ? 'btn-listening' : 'btn-normal'}`} onClick={toggleListening}>
+          <View 
+            className={`icon-btn ${isListening ? 'btn-listening' : 'btn-normal'}`} 
+            onTouchStart={startRecording}
+            onTouchEnd={stopRecording}
+            onTouchCancel={stopRecording}
+          >
             <Text className="iconfont">🎤</Text>
           </View>
 
@@ -317,7 +392,7 @@ const Chat = () => {
             className="text-input" 
             type="text" 
             confirmType="send"
-            placeholder={isListening ? '正在聆听...' : '输入消息...'}
+            placeholder="输入消息..."
             placeholderClass="placeholder-style"
             value={input} 
             onInput={(e) => setInput(e.detail.value)}

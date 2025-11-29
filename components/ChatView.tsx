@@ -46,7 +46,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onNewRecord }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [pendingImages, setPendingImages] = useState<string[]>([]);
-  const [isListening, setIsListening] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -70,23 +70,29 @@ export const ChatView: React.FC<ChatViewProps> = ({ onNewRecord }) => {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       try {
         recognitionRef.current = new SpeechRecognition();
-        recognitionRef.current.continuous = false;
-        recognitionRef.current.interimResults = false;
+        recognitionRef.current.continuous = true; // Keep listening while holding
+        recognitionRef.current.interimResults = true;
         recognitionRef.current.lang = 'zh-CN';
 
         recognitionRef.current.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
-          setInput(prev => prev + transcript);
-          setIsListening(false);
+          let finalTranscript = '';
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              finalTranscript += event.results[i][0].transcript;
+            }
+          }
+          if (finalTranscript) {
+             setInput(prev => prev + finalTranscript);
+          }
         };
 
         recognitionRef.current.onerror = (event: any) => {
           console.error("Speech error", event);
-          setIsListening(false);
+          setIsRecording(false);
         };
 
         recognitionRef.current.onend = () => {
-          setIsListening(false);
+          // Auto restart if still holding? Logic handled by stopRecording
         };
       } catch (e) {
         console.error("Speech recognition init failed", e);
@@ -123,17 +129,30 @@ export const ChatView: React.FC<ChatViewProps> = ({ onNewRecord }) => {
     setPendingImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const toggleListening = () => {
-    if (isListening) {
-      recognitionRef.current?.stop();
-    } else {
-      if (recognitionRef.current) {
-        setIsListening(true);
-        recognitionRef.current.start();
-      } else {
+  const startRecording = (e: React.SyntheticEvent) => {
+    e.preventDefault(); // Prevent text selection/context menu
+    if (!recognitionRef.current) {
         alert("您的浏览器不支持语音识别功能。");
-      }
+        return;
     }
+    if (!isRecording) {
+        setIsRecording(true);
+        try {
+            recognitionRef.current.start();
+        } catch(err) {
+            console.log("Recognition already started");
+        }
+    }
+  };
+
+  const stopRecording = (e: React.SyntheticEvent) => {
+     e.preventDefault();
+     if (isRecording) {
+         setIsRecording(false);
+         if (recognitionRef.current) {
+             recognitionRef.current.stop();
+         }
+     }
   };
 
   const checkBudget = (expense: {amount: number, category: string}) => {
@@ -304,12 +323,28 @@ export const ChatView: React.FC<ChatViewProps> = ({ onNewRecord }) => {
 
   return (
     <div className="flex flex-col h-full bg-modern-bg pb-24 relative">
+        {/* Visual Recording Overlay */}
+        {isRecording && (
+            <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900/60 backdrop-blur-sm select-none">
+                <div className="relative">
+                    <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75"></div>
+                    <div className="relative w-28 h-28 bg-gradient-to-br from-red-500 to-pink-600 rounded-full flex items-center justify-center shadow-2xl scale-110 transition-transform">
+                        <Mic size={48} className="text-white" />
+                    </div>
+                </div>
+                <div className="mt-12 text-center">
+                    <p className="text-white text-xl font-bold tracking-widest animate-pulse">正在聆听...</p>
+                    <p className="text-white/70 text-sm mt-3 font-medium">松开手指 结束录音</p>
+                </div>
+            </div>
+        )}
+
       {/* Header */}
       <div className="h-14 flex items-center justify-center sticky top-0 z-10 glass-nav border-b border-white/20">
         <h1 className="font-bold text-lg text-slate-700 tracking-wide">AIDANCE</h1>
       </div>
 
-      {/* Messages Area - Added pb-32 to clear the input box */}
+      {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-32">
         {messages.map((msg) => {
           const isUser = msg.role === 'user';
@@ -391,11 +426,16 @@ export const ChatView: React.FC<ChatViewProps> = ({ onNewRecord }) => {
             )}
             
             <div className="flex items-end gap-2">
-                {/* Voice Button */}
+                {/* Voice Button (Hold to Talk) */}
                 <button
-                    onClick={toggleListening}
-                    className={`h-10 w-10 rounded-full flex items-center justify-center transition-all duration-300 shrink-0
-                    ${isListening ? 'bg-red-500 text-white shadow-lg scale-110' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                    onMouseDown={startRecording}
+                    onMouseUp={stopRecording}
+                    onMouseLeave={stopRecording}
+                    onTouchStart={startRecording}
+                    onTouchEnd={stopRecording}
+                    onContextMenu={(e) => e.preventDefault()}
+                    className={`h-10 w-10 rounded-full flex items-center justify-center transition-all duration-300 shrink-0 select-none touch-none
+                    ${isRecording ? 'bg-red-500 text-white shadow-lg scale-110' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
                 >
                     <Mic size={20} />
                 </button>
@@ -405,7 +445,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onNewRecord }) => {
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder={isListening ? "正在聆听..." : "输入消息..."}
+                        placeholder="输入消息..."
                         className="w-full bg-transparent border-none outline-none resize-none max-h-24 text-[16px] leading-6 text-slate-800 placeholder-slate-400 font-medium"
                         rows={1}
                         style={{ height: 'auto', minHeight: '24px' }}

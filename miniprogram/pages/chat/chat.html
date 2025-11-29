@@ -1,5 +1,17 @@
+
 <!-- miniprogram/pages/chat/chat.wxml (saved as .html) -->
 <view class="container">
+  
+  <!-- Recording Overlay -->
+  <view wx:if="{{isListening}}" class="recording-overlay">
+    <view class="recording-ripple"></view>
+    <view class="recording-icon">
+        <text class="iconfont" style="font-size: 60rpx; color: white;">🎤</text>
+    </view>
+    <text class="recording-text">正在聆听...</text>
+    <text class="recording-sub">松开 发送</text>
+  </view>
+
   <!-- Header -->
   <view class="header glass-nav">
     <text class="header-title">AIDANCE</text>
@@ -52,9 +64,9 @@
         <image src="/assets/chat-active.png" mode="aspectFit" class="avatar-icon"></image>
       </view>
       <view class="bubble bubble-model typing-bubble">
-        <view class="dot dot-1"></view>
-        <view class="dot dot-2"></view>
-        <view class="dot dot-3"></view>
+        <view class="dot dot-1"></View>
+        <view class="dot dot-2"></View>
+        <view class="dot dot-3"></View>
       </view>
     </view>
 
@@ -77,8 +89,11 @@
     </scroll-view>
 
     <view class="input-bar">
-      <!-- Voice/Mic Button (Placeholder for now) -->
-      <view class="icon-btn {{isListening ? 'btn-listening' : 'btn-normal'}}" bindtap="toggleListening">
+      <!-- Voice/Mic Button (Hold to Talk) -->
+      <view class="icon-btn {{isListening ? 'btn-listening' : 'btn-normal'}}" 
+            bindtouchstart="startRecording" 
+            bindtouchend="stopRecording"
+            catchtouchcancel="stopRecording">
         <text class="iconfont">🎤</text>
       </view>
 
@@ -87,7 +102,7 @@
         class="text-input" 
         type="text" 
         confirm-type="send"
-        placeholder="{{isListening ? '正在聆听...' : '输入消息...'}}" 
+        placeholder="输入消息..." 
         placeholder-class="placeholder-style"
         value="{{input}}" 
         bindinput="handleInput"
