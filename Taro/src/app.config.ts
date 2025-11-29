@@ -1,4 +1,4 @@
-export default defineAppConfig({
+export default {
   pages: [
     'pages/chat/index',
     'pages/dashboard/index'
@@ -29,4 +29,4 @@ export default defineAppConfig({
       }
     ]
   }
-})
+}

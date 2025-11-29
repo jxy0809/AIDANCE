@@ -3,6 +3,7 @@ import Taro from '@tarojs/taro'
 import { View as ViewC, Text as TextC, Image as ImageC, ScrollView as ScrollViewC, Input as InputC } from '@tarojs/components'
 import { sendMessageToButler } from '../../utils/gemini'
 import { saveRecord, getMessages, saveMessages, getRecords, getBudgetConfig, saveBudgetConfig } from '../../utils/storage'
+import chatActiveIcon from '../../assets/chat-active.png'
 import './index.css'
 
 // Workaround for Taro type definition issues where components are inferred as Vue components
@@ -253,7 +254,7 @@ const Chat = () => {
                 <View className={`avatar ${item.isAlert ? 'avatar-alert' : 'avatar-bot'}`}>
                   {item.isAlert 
                     ? <Text>⚠️</Text> 
-                    : <Image src={require('../../assets/chat-active.png')} mode="aspectFit" className="avatar-icon" />
+                    : <Image src={chatActiveIcon} mode="aspectFit" className="avatar-icon" />
                   }
                 </View>
               )}
@@ -279,7 +280,7 @@ const Chat = () => {
         {isTyping && (
           <View className="message-wrapper model-wrapper">
             <View className="avatar avatar-bot">
-              <Image src={require('../../assets/chat-active.png')} mode="aspectFit" className="avatar-icon" />
+              <Image src={chatActiveIcon} mode="aspectFit" className="avatar-icon" />
             </View>
             <View className="bubble bubble-model typing-bubble">
               <View className="dot dot-1"></View>
