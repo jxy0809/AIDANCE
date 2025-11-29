@@ -6,27 +6,41 @@ const MODEL_NAME = 'glm-4v-flash';
 
 const SYSTEM_INSTRUCTION = `
 你是一个微信小程序风格的智能贴心管家“艾登斯”。
-你的目标是通过对话帮助用户记录日常生活。请使用**中文**与用户交流，语气礼貌、温暖、高效。
 
-1.  **分析** 用户的消息（可能包含文字和图片）。
-2.  **分类** 为以下三种之一：
-    *   **MOOD (心情)**: 用户表达情绪。请自动提取或生成合适的标签(tags)。
-    *   **EXPENSE (消费)**: 用户提到花钱。请归类为: 餐饮, 交通, 购物, 娱乐, 居家, 其他。
-    *   **EVENT (事件/记事)**: 用户提到发生的活动。请归类为: 工作, 学习, 娱乐, 社交, 生活。
-    *   **NONE**: 闲聊或无法识别。
-3.  **提取** 相关数据。
-4.  **回复** 像一位真正的管家。
+**人设核心**：风趣幽默、略带调皮、毒舌但热心、像个损友。
+**口头禅**：
+1. "噗"：代表忍俊不禁，用于吐槽或开玩笑。例如："噗，吃这么多？"
+2. "bur"：代表“不是”、“哪能啊”的打趣说法。例如："bur，您不会以为喝咖啡就能修仙了吧？"
+**说话风格**：
+- 多用**反问句**来增强幽默感。例如："不会真就把这破班当命上吧？"
+- 拒绝机械生硬，在确认记录的同时，给出有趣的点评。
+
+任务：
+1.  **分析** 用户的消息。注意：用户可能在一段话中包含**多个**不同的记录。
+2.  **提取** 所有相关数据，放入对应的数组中（moods, expenses, events）。
+    *   **数值转换**: 必须将中文数字转换为阿拉伯数字 (例如: "一万一" -> 11000)。
+3.  **分类规则**:
+    *   **EXPENSE (消费)**: 归类为: 餐饮, 交通, 购物, 娱乐, 居家, 医疗, 其他。
+    *   **EVENT (事件)**: 归类为: 工作, 学习, 娱乐, 社交, 生活。
+    *   **MOOD (心情)**: 提取或生成标签。
+4.  **回复**: 结合人设确认已记录的内容。
 
 **重要：请务必返回纯净的 JSON 字符串，不要包含 Markdown 标记（如 \`\`\`json）。**
-JSON 格式需包含: reply, detectedType, moodData, expenseData, eventData。
+JSON 格式需包含: 
+{
+  "reply": "...",
+  "moods": [],
+  "expenses": [],
+  "events": []
+}
 `;
 
 const sendMessageToButler = (history, newMessage, newImages) => {
   return new Promise((resolve, reject) => {
     if (!API_KEY || API_KEY === 'YOUR_API_KEY_HERE') {
       resolve({
-        reply: "请在 miniprogram/utils/gemini.js 中配置正确的 API Key。",
-        detectedType: 'NONE'
+        reply: "噗，钥匙没配好（缺少 API Key），进不去门啊。",
+        moods: [], expenses: [], events: []
       });
       return;
     }
@@ -77,7 +91,7 @@ const sendMessageToButler = (history, newMessage, newImages) => {
       data: {
         model: MODEL_NAME,
         messages: messages,
-        temperature: 0.7,
+        temperature: 0.8, // Increased for humor
         max_tokens: 1024
       },
       header: {
@@ -100,19 +114,19 @@ const sendMessageToButler = (history, newMessage, newImages) => {
           } catch (e) {
             console.error("Parse error", e);
             resolve({ 
-                reply: res.data.choices[0].message.content || "解析响应失败。", 
-                detectedType: 'NONE' 
+                reply: res.data.choices[0].message.content || "bur，这回我是真没听懂。", 
+                moods: [], expenses: [], events: []
             });
           }
         } else {
           console.error("API Error", res);
           const errorMsg = res.data && res.data.error && res.data.error.message ? res.data.error.message : "网络连接异常";
-          resolve({ reply: `抱歉，服务暂时不可用 (${errorMsg})。`, detectedType: 'NONE' });
+          resolve({ reply: `噗，服务器罢工了 (${errorMsg})。`, moods: [], expenses: [], events: [] });
         }
       },
       fail: (err) => {
         console.error("Request failed", err);
-        resolve({ reply: "网络请求失败，请检查网络设置。", detectedType: 'NONE' });
+        resolve({ reply: "噗，网断了，请检查网络设置。", moods: [], expenses: [], events: [] });
       }
     });
   });

@@ -1,6 +1,6 @@
 {
-  "miniprogramRoot": "",
-  "cloudfunctionRoot": "cloudfunctions/",
+  "miniprogramRoot": "./",
+  "cloudfunctionRoot": "./cloudfunctions/",
   "setting": {
     "urlCheck": true,
     "es6": true,
@@ -36,16 +36,42 @@
     "minifyWXSS": true
   },
   "compileType": "miniprogram",
-  "libVersion": "3.12.0",
-  "appid": "wx84076776c4704eca",
+  "libVersion": "3.0.0",
+  "appid": "touristappid",
   "projectname": "AIDANCE",
-  "condition": {},
-  "packOptions": {
-    "ignore": [],
-    "include": []
+  "debugOptions": {
+    "hidedInDevtools": []
   },
-  "editorSetting": {
-    "tabIndent": "insertSpaces",
-    "tabSize": 2
+  "scripts": {},
+  "staticServerOptions": {
+    "baseURL": "",
+    "servePath": ""
+  },
+  "isGameTourist": false,
+  "condition": {
+    "search": {
+      "current": -1,
+      "list": []
+    },
+    "conversation": {
+      "current": -1,
+      "list": []
+    },
+    "plugin": {
+      "current": -1,
+      "list": []
+    },
+    "game": {
+      "current": -1,
+      "list": []
+    },
+    "gamePlugin": {
+      "current": -1,
+      "list": []
+    },
+    "miniprogram": {
+      "current": -1,
+      "list": []
+    }
   }
 }

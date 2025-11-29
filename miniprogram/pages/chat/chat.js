@@ -194,41 +194,55 @@ Page({
 
       const finalMessages = [...newMessages, botMsg];
 
-      // Process Data
-      if (response.detectedType !== 'NONE') {
-         const base = {
-           id: generateId(),
-           timestamp: Date.now(),
-           rawInput: content,
-           images: images
-         };
+      // Process Data Arrays
+      let budgetAlerts = [];
+      const base = {
+         id: '', 
+         timestamp: Date.now(),
+         rawInput: content,
+         images: images
+      };
 
-         let newRecord = null;
-         let budgetAlert = null;
+      // 1. Moods
+      if (response.moods && response.moods.length > 0) {
+          response.moods.forEach(mood => {
+              const newRecord = { ...base, id: generateId(), type: 'MOOD', ...mood };
+              saveRecord(newRecord);
+          });
+      }
 
-         if (response.detectedType === 'MOOD' && response.moodData) {
-           newRecord = { ...base, type: 'MOOD', ...response.moodData };
-         } else if (response.detectedType === 'EXPENSE' && response.expenseData) {
-           newRecord = { ...base, type: 'EXPENSE', currency: '¥', ...response.expenseData };
-           budgetAlert = this.checkBudget(response.expenseData);
-         } else if (response.detectedType === 'EVENT' && response.eventData) {
-           newRecord = { ...base, type: 'EVENT', ...response.eventData };
-         }
+      // 2. Expenses
+      if (response.expenses && response.expenses.length > 0) {
+          response.expenses.forEach(exp => {
+              const newRecord = { ...base, id: generateId(), type: 'EXPENSE', currency: '¥', ...exp };
+              saveRecord(newRecord);
+              
+              const alert = this.checkBudget(exp);
+              if (alert) budgetAlerts.push(alert);
+          });
+      }
 
-         if (newRecord) {
-           saveRecord(newRecord);
-         }
+      // 3. Events
+      if (response.events && response.events.length > 0) {
+          response.events.forEach(evt => {
+              const newRecord = { ...base, id: generateId(), type: 'EVENT', ...evt };
+              saveRecord(newRecord);
+          });
+      }
 
-         if (budgetAlert) {
-           finalMessages.push({
-             id: generateId(),
-             role: 'model',
-             content: budgetAlert,
-             timestamp: Date.now() + 100,
-             isAlert: true,
-             timeStr: new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute:'2-digit'})
-           });
-         }
+      // Add unique budget alerts
+      if (budgetAlerts.length > 0) {
+          const uniqueAlerts = Array.from(new Set(budgetAlerts));
+          uniqueAlerts.forEach(alert => {
+            finalMessages.push({
+                id: generateId(),
+                role: 'model',
+                content: alert,
+                timestamp: Date.now() + 100,
+                isAlert: true,
+                timeStr: new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute:'2-digit'})
+            });
+          });
       }
 
       this.setData({ messages: finalMessages, isTyping: false });

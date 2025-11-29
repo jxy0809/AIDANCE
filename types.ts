@@ -59,23 +59,23 @@ export interface BudgetConfig {
 // API Response Schema Type
 export interface ButlerResponse {
   reply: string;
-  detectedType: 'MOOD' | 'EXPENSE' | 'EVENT' | 'NONE';
-  moodData?: {
+  // Arrays to support multiple records in one message
+  moods?: {
     mood: string;
     score: number;
     emoji: string;
     description: string;
     tags: string[];
-  };
-  expenseData?: {
+  }[];
+  expenses?: {
     amount: number;
     category: string;
     item: string;
-  };
-  eventData?: {
+  }[];
+  events?: {
     title: string;
     details: string;
     category: string;
     time: string;
-  };
+  }[];
 }

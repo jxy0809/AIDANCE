@@ -4,81 +4,134 @@ import { ButlerResponse } from "../types";
 
 const SYSTEM_INSTRUCTION = `
 你是一个微信小程序风格的智能贴心管家“艾登斯”。
-你的目标是通过对话帮助用户记录日常生活。请使用**中文**与用户交流，语气礼貌、温暖、高效。
 
-1.  **分析** 用户的消息（可能包含文字和图片）。
-2.  **分类** 为以下三种之一：
-    *   **MOOD (心情)**: 用户表达情绪 (例如 "今天很开心", "有点累", "和朋友吵架了")。请自动提取或生成合适的标签(tags)，如"开心", "难过", "焦虑", "平静"等。
-    *   **EXPENSE (消费)**: 用户提到花钱 (例如 "午饭30元", "买了本书20块")。请归类为: 餐饮, 交通, 购物, 娱乐, 居家, 其他。
-    *   **EVENT (事件/记事)**: 用户提到发生的活动 (例如 "下午3点开会", "去公园散步")。请归类为: 工作, 学习, 娱乐, 社交, 生活。
-    *   **NONE**: 闲聊或无法识别。
-3.  **提取** 相关数据。
-4.  **回复** 像一位真正的管家 (例如 "好的，先生/女士，这笔餐饮支出已为您记下。", "听到您这么说我也很遗憾，希望您心情快点好起来。已为您记录心情。")。
+**人设核心**：风趣幽默、略带调皮、毒舌但热心、像个损友。
+**口头禅**：
+1. "噗"：代表忍俊不禁，用于吐槽或开玩笑。例如："噗，吃这么多？"
+2. "bur"：代表“不是”、“哪能啊”的打趣说法。例如："bur，您不会以为喝咖啡就能修仙了吧？"
+**说话风格**：
+- 多用**反问句**来增强幽默感。例如："不会真就把这破班当命上吧？"
+- 拒绝机械生硬，在确认记录的同时，给出有趣的点评。
 
-JSON 格式如下：
+任务：
+1.  **分析** 用户的消息。注意：用户可能在一段话中包含**多个**不同的记录。
+2.  **提取** 所有相关数据，放入对应的数组中（moods, expenses, events）。
+    *   **数值转换**: 必须将中文数字转换为阿拉伯数字 (例如: "一万一" -> 11000)。
+3.  **分类规则**:
+    *   **EXPENSE (消费)**: 归类为: 餐饮, 交通, 购物, 娱乐, 居家, 医疗, 其他。
+    *   **EVENT (事件)**: 归类为: 工作, 学习, 娱乐, 社交, 生活。
+    *   **MOOD (心情)**: 提取或生成标签。
+4.  **回复**: 结合人设确认已记录的内容。
+
+JSON 输出格式:
 {
-  "reply": "给用户的自然语言回复",
-  "detectedType": "MOOD" | "EXPENSE" | "EVENT" | "NONE",
-  "moodData": { "mood": "开心", "score": 5, "emoji": "😄", "description": "...", "tags": ["开心"] } (仅当类型为 MOOD 时),
-  "expenseData": { "amount": 100, "category": "餐饮", "item": "午餐" } (仅当类型为 EXPENSE 时),
-  "eventData": { "title": "开会", "details": "...", "category": "工作", "time": "今天" } (仅当类型为 EVENT 时)
+  "reply": "给用户的回复 (记得用'噗'或'bur'，多用反问)",
+  "moods": [ { "mood": "开心", "score": 5, "emoji": "😄", "description": "...", "tags": ["开心"] } ],
+  "expenses": [ { "amount": 11000, "category": "购物", "item": "保险" } ],
+  "events": [ { "title": "开会", "details": "...", "category": "工作", "time": "今天" } ]
 }
+如果没有任何记录，数组留空。
 `;
+
+// Replace with your Zhipu AI API Key if needed, or stick to the proxy pattern
+// Ideally this should come from env, but for this demo context we use the direct fetch pattern compatible with the provided key type.
+// Since the user previously asked to switch to Zhipu via fetch in geminiService.ts, I will maintain that pattern here
+// but ensure the prompts are updated.
+
+const API_KEY = '6f3fe433cc4a492ab5e0c0c8ea995b3f.2Q2NYAKTZQnZP7U0'; 
+const API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+const MODEL_NAME = 'glm-4v-flash';
 
 export const sendMessageToButler = async (
   history: { role: string; parts: { text?: string; inlineData?: any }[] }[],
   newMessage: string,
   newImages?: string[]
 ): Promise<ButlerResponse> => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    console.error("Missing API Key");
-    return {
-      reply: "抱歉，无法连接服务（缺少 API Key）。",
-      detectedType: 'NONE'
-    };
+  
+  // Convert History to OpenAI/Zhipu format
+  const messages: any[] = [
+      { role: 'system', content: SYSTEM_INSTRUCTION }
+  ];
+
+  history.forEach(h => {
+      const role = h.role === 'model' ? 'assistant' : 'user';
+      const content: any[] = [];
+      if (h.parts) {
+          h.parts.forEach(p => {
+              if (p.text) content.push({ type: 'text', text: p.text });
+          });
+      }
+      if (content.length > 0) {
+          messages.push({ role, content });
+      }
+  });
+
+  // Current Message
+  const currentContent: any[] = [];
+  if (newMessage) {
+      currentContent.push({ type: 'text', text: newMessage });
+  }
+
+  if (newImages && newImages.length > 0) {
+      newImages.forEach(base64 => {
+           // Zhipu expects data:image... format
+           const url = base64.startsWith('data:') ? base64 : `data:image/jpeg;base64,${base64}`;
+           currentContent.push({
+               type: 'image_url',
+               image_url: { url: url }
+           });
+      });
+  }
+  
+  if (currentContent.length > 0) {
+      messages.push({ role: 'user', content: currentContent });
   }
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
-
-    // The history argument already contains the full conversation including the latest message,
-    // formatted with roles and parts compatible with Gemini API.
-    const contents = history.map(h => ({
-      role: h.role,
-      parts: h.parts
-    }));
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: contents,
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        responseMimeType: "application/json",
-      }
+    const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${API_KEY}`
+        },
+        body: JSON.stringify({
+            model: MODEL_NAME,
+            messages: messages,
+            temperature: 0.8, // Slightly higher for humor
+            max_tokens: 1024
+        })
     });
 
-    const text = response.text;
-    if (!text) {
-        throw new Error("Empty response from model");
-    }
+    const data = await response.json();
 
-    try {
-        const parsed: ButlerResponse = JSON.parse(text);
-        return parsed;
-    } catch (e) {
-        console.error("JSON Parse Error", text);
-        return {
-            reply: text || "抱歉，我没有理解您的意思。",
-            detectedType: 'NONE'
-        };
+    if (data.choices && data.choices[0]) {
+        let text = data.choices[0].message.content;
+        // Clean markdown
+        text = text.replace(/```json\n?|```/g, "").trim();
+        
+        // Attempt to extract JSON
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) text = jsonMatch[0];
+
+        try {
+            const parsed: ButlerResponse = JSON.parse(text);
+            return parsed;
+        } catch (e) {
+            console.error("JSON Parse Error", text);
+            return {
+                reply: text || "bur，脑子有点短路，没听懂。",
+                moods: [], expenses: [], events: []
+            };
+        }
+    } else {
+        throw new Error(data.error?.message || "API Error");
     }
 
   } catch (error) {
     console.error("Butler Error:", error);
     return {
-      reply: "抱歉，连接服务器时出现了问题，请稍后再试。",
-      detectedType: 'NONE'
+      reply: "噗，网线好像被拔了，连接不上服务。",
+      moods: [], expenses: [], events: []
     };
   }
 };

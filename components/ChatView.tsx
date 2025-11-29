@@ -168,7 +168,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onNewRecord }) => {
       }
     }
 
-    // Total Check (only if category check didn't trigger strict warning, or append)
+    // Total Check
     if (totalSpent > config.totalBudget) {
       const msg = `⚠️ 本月总预算已超支！(预算: ¥${config.totalBudget}, 已用: ¥${totalSpent})`;
       alertMsg = alertMsg ? `${alertMsg}\n${msg}` : msg;
@@ -224,42 +224,63 @@ export const ChatView: React.FC<ChatViewProps> = ({ onNewRecord }) => {
 
       const finalMessages = [...updatedMessages, butlerMsg];
 
-      // Process Data
-      if (response.detectedType !== 'NONE') {
-        const base = {
-          id: generateId(),
-          timestamp: Date.now(),
-          rawInput: userMsg.content,
-          images: userMsg.images
-        };
+      // Process Multiple Records
+      let hasNewRecord = false;
+      const budgetAlerts: string[] = [];
 
-        let newRecord: AppRecord | null = null;
-        let budgetAlert: string | null = null;
+      const base = {
+        id: '', // Generated per record
+        timestamp: Date.now(),
+        rawInput: userMsg.content,
+        images: userMsg.images
+      };
 
-        if (response.detectedType === 'MOOD' && response.moodData) {
-          newRecord = { ...base, type: RecordType.MOOD, ...response.moodData };
-        } else if (response.detectedType === 'EXPENSE' && response.expenseData) {
-          newRecord = { ...base, type: RecordType.EXPENSE, currency: '¥', ...response.expenseData };
-          // Check Budget immediately
-          budgetAlert = checkBudget(response.expenseData);
-        } else if (response.detectedType === 'EVENT' && response.eventData) {
-          newRecord = { ...base, type: RecordType.EVENT, ...response.eventData };
-        }
+      // 1. Moods
+      if (response.moods && response.moods.length > 0) {
+          response.moods.forEach(mood => {
+              const newRecord = { ...base, id: generateId(), type: RecordType.MOOD, ...mood };
+              saveRecord(newRecord as any);
+              onNewRecord(newRecord as any);
+              hasNewRecord = true;
+          });
+      }
 
-        if (newRecord) {
-          saveRecord(newRecord);
-          onNewRecord(newRecord);
-        }
+      // 2. Expenses
+      if (response.expenses && response.expenses.length > 0) {
+          response.expenses.forEach(exp => {
+              const newRecord = { ...base, id: generateId(), type: RecordType.EXPENSE, currency: '¥', ...exp };
+              saveRecord(newRecord as any);
+              onNewRecord(newRecord as any);
+              hasNewRecord = true;
+              
+              // Check budget
+              const alert = checkBudget(exp);
+              if (alert) budgetAlerts.push(alert);
+          });
+      }
 
-        if (budgetAlert) {
+      // 3. Events
+      if (response.events && response.events.length > 0) {
+          response.events.forEach(evt => {
+              const newRecord = { ...base, id: generateId(), type: RecordType.EVENT, ...evt };
+              saveRecord(newRecord as any);
+              onNewRecord(newRecord as any);
+              hasNewRecord = true;
+          });
+      }
+
+      // Add unique budget alerts to chat
+      if (budgetAlerts.length > 0) {
+          const uniqueAlerts = Array.from(new Set(budgetAlerts));
+          uniqueAlerts.forEach(alert => {
             finalMessages.push({
                 id: generateId(),
                 role: 'model',
-                content: budgetAlert,
+                content: alert,
                 timestamp: Date.now() + 100,
                 isAlert: true
             });
-        }
+          });
       }
 
       setMessages(finalMessages);
@@ -273,7 +294,6 @@ export const ChatView: React.FC<ChatViewProps> = ({ onNewRecord }) => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Prevent sending if using IME (Input Method Editor) for languages like Chinese
     if ((e.nativeEvent as any).isComposing) return;
     
     if (e.key === 'Enter' && !e.shiftKey) {
