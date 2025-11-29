@@ -1,0 +1,188 @@
+<!-- miniprogram/pages/dashboard/dashboard.wxml (saved as .html) -->
+<view class="container">
+  <!-- Header -->
+  <view class="header glass-nav">
+    <text class="header-title">STATISTICS</text>
+  </view>
+
+  <!-- Content Scroll -->
+  <scroll-view class="content-scroll" scroll-y="true">
+    <view class="padding-wrap">
+      
+      <!-- Budget Card -->
+      <view class="card budget-card fade-in stagger-1">
+        <view class="card-decor"></view>
+        <view class="card-content">
+          <view class="budget-header">
+            <view>
+              <text class="label">本月预算</text>
+              <view class="amount-row">
+                <text class="curr-amount">¥{{totalSpent}}</text>
+                <text class="total-amount">/ {{budgetConfig.totalBudget}}</text>
+              </view>
+            </view>
+            <view class="settings-btn" bindtap="toggleBudgetModal">
+              <text>⚙️</text>
+            </view>
+          </view>
+          
+          <view class="progress-container">
+            <view 
+              class="progress-bar {{budgetProgress > 100 ? 'bg-red' : (budgetProgress > 80 ? 'bg-orange' : 'bg-indigo')}}"
+              style="width: {{budgetProgress > 100 ? 100 : budgetProgress}}%;"
+            ></view>
+          </view>
+          
+          <view class="budget-footer">
+            <text class="text-indigo">已使用 {{budgetProgress}}%</text>
+            <text class="text-gray">{{budgetProgress > 100 ? '已超支' : '剩余 ¥' + (budgetConfig.totalBudget - totalSpent)}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- Chart Section (Simplified visual representation for WXML) -->
+      <view class="card chart-card fade-in stagger-2" wx:if="{{chartData.length > 0}}">
+        <text class="section-title">消费分布</text>
+        <view class="chart-list">
+          <block wx:for="{{chartData}}" wx:key="name">
+            <view class="chart-item">
+              <text class="chart-label">{{item.name}}</text>
+              <view class="chart-bar-bg">
+                <view class="chart-bar-fill" style="width: {{item.percent}}%; background-color: {{item.color}};"></view>
+              </view>
+              <text class="chart-value">¥{{item.value}}</text>
+            </view>
+          </block>
+        </view>
+      </view>
+
+      <!-- Tabs -->
+      <view class="sticky-tabs fade-in stagger-2">
+        <scroll-view scroll-x="true" class="tabs-scroll" enable-flex="true">
+          <block wx:for="{{tabs}}" wx:key="id">
+            <view 
+              class="tab-item {{activeTab === item.id ? 'tab-active' : 'tab-normal'}}" 
+              bindtap="switchTab" 
+              data-id="{{item.id}}"
+            >
+              {{item.label}}
+            </view>
+          </block>
+        </scroll-view>
+
+        <!-- Category Filter -->
+        <scroll-view 
+          wx:if="{{activeTab !== 'all' && categories.length > 0}}" 
+          scroll-x="true" 
+          class="sub-tabs-scroll"
+          enable-flex="true"
+        >
+          <view 
+            class="sub-tab {{filterCategory === 'all' ? 'sub-active' : ''}}" 
+            bindtap="setCategory" 
+            data-cat="all"
+          >全部</view>
+          <block wx:for="{{categories}}" wx:key="*this">
+            <view 
+              class="sub-tab {{filterCategory === item ? 'sub-active' : ''}}" 
+              bindtap="setCategory" 
+              data-cat="{{item}}"
+            >
+              {{item}}
+            </view>
+          </block>
+        </scroll-view>
+      </view>
+
+      <!-- Record List -->
+      <view class="record-list">
+        <block wx:if="{{filteredRecords.length === 0}}">
+          <view class="empty-state fade-in stagger-3">
+            <view class="empty-icon"></view>
+            <text>暂无记录</text>
+          </view>
+        </block>
+
+        <block wx:else>
+          <block wx:for="{{filteredRecords}}" wx:key="id">
+            <view class="record-item fade-in stagger-3">
+              <!-- Date Box -->
+              <view class="date-box">
+                <text class="date-month">{{item.month}}月</text>
+                <text class="date-day">{{item.day}}</text>
+              </view>
+
+              <!-- Content -->
+              <view class="record-content">
+                <view class="record-top">
+                  <view class="record-title-row">
+                    <!-- Mood -->
+                    <block wx:if="{{item.type === 'MOOD'}}">
+                      <text class="emoji">{{item.emoji}}</text>
+                      <text class="title">{{item.mood}}</text>
+                    </block>
+                    <!-- Expense -->
+                    <block wx:elif="{{item.type === 'EXPENSE'}}">
+                      <text class="title">{{item.item}}</text>
+                    </block>
+                    <!-- Event -->
+                    <block wx:elif="{{item.type === 'EVENT'}}">
+                      <text class="title">{{item.title}}</text>
+                    </block>
+                  </view>
+                  
+                  <!-- Amount for Expense -->
+                  <text wx:if="{{item.type === 'EXPENSE'}}" class="amount-badge">-¥{{item.amount}}</text>
+                </view>
+
+                <text class="time-text">{{item.time}}</text>
+                
+                <!-- Description -->
+                <text wx:if="{{item.type === 'MOOD'}}" class="desc-text">{{item.description}}</text>
+                <text wx:if="{{item.type === 'EVENT'}}" class="desc-text">{{item.details}}</text>
+
+                <!-- Tags -->
+                <view class="tags-row">
+                  <block wx:for="{{item.displayTags}}" wx:key="*this" wx:for-item="tag">
+                    <text class="tag {{item.type === 'MOOD' ? 'tag-yellow' : (item.type === 'EXPENSE' ? 'tag-indigo' : 'tag-blue')}}">#{{tag}}</text>
+                  </block>
+                </view>
+              </view>
+            </view>
+          </block>
+        </block>
+        
+        <!-- Clear Data Button -->
+        <view class="clear-btn-wrapper fade-in stagger-4" wx:if="{{records.length > 0}}">
+          <button class="clear-btn" bindtap="clearAllData">🗑 清空所有数据</button>
+        </view>
+      </view>
+
+    </view>
+  </scroll-view>
+
+  <!-- Budget Modal -->
+  <view class="modal-overlay" wx:if="{{showBudgetModal}}">
+    <view class="modal-content fade-in-up">
+      <view class="modal-header">
+        <text class="modal-title">预算设置 (每月)</text>
+        <view class="close-btn" bindtap="toggleBudgetModal">×</view>
+      </view>
+      
+      <view class="modal-body">
+        <view class="form-group">
+          <text class="label">月总预算</text>
+          <view class="input-wrapper">
+            <text class="prefix">¥</text>
+            <input class="modal-input" type="number" value="{{tempTotalBudget}}" bindinput="onTotalBudgetChange" />
+          </view>
+        </view>
+        <view class="hint-text">目前仅支持设置总预算，分类预算功能敬请期待。</view>
+      </view>
+
+      <view class="modal-footer">
+        <button class="save-btn" bindtap="saveBudget">保存设置</button>
+      </view>
+    </view>
+  </view>
+</view>
