@@ -18,14 +18,14 @@
       {
         "pagePath": "pages/index/index",
         "text": "对话",
-        "iconPath": "/images/chat.png",
-        "selectedIconPath": "/images/chat-active.png"
+        "iconPath": "images/chat.png",
+        "selectedIconPath": "images/chat-active.png"
       },
       {
         "pagePath": "pages/dashboard/dashboard",
         "text": "统计",
-        "iconPath": "/images/chart.png",
-        "selectedIconPath": "/images/chart-active.png"
+        "iconPath": "images/chart.png",
+        "selectedIconPath": "images/chart-active.png"
       }
     ]
   },
