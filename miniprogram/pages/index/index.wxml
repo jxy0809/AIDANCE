@@ -1,0 +1,6 @@
+<view class="container">
+  <view class="content">
+    <text class="title">AIDANCE</text>
+    <text class="subtitle">小程序开发中...</text>
+  </view>
+</view>
