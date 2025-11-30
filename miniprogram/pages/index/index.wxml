@@ -1,31 +1,77 @@
 <view class="chat-container">
   <!-- 消息列表 -->
-  <scroll-view class="messages" scroll-y="true" scroll-into-view="{{scrollToView}}">
-    <view class="message {{item.role}}" wx:for="{{messages}}" wx:key="id" id="msg-{{index}}">
-      <view class="message-content">
-        <text>{{item.content}}</text>
+  <scroll-view class="messages" scroll-y="true" scroll-into-view="{{scrollToView}}" scroll-with-animation="true">
+    <view class="message {{item.role}} {{item.isAlert ? 'alert' : ''}}" wx:for="{{messages}}" wx:key="id" id="msg-{{index}}">
+      <view class="message-avatar" wx:if="{{item.role === 'model'}}">
+        <text class="avatar-icon">{{item.isAlert ? '⚠️' : '🤖'}}</text>
+      </view>
+      
+      <view class="message-content-wrapper">
+        <view class="message-content">
+          <!-- 图片 -->
+          <view class="message-images" wx:if="{{item.images && item.images.length > 0}}">
+            <image 
+              wx:for="{{item.images}}" 
+              wx:key="*this" 
+              wx:for-item="img"
+              src="{{img}}" 
+              mode="aspectFill"
+              class="message-image"
+            />
+          </view>
+          <!-- 文字 -->
+          <text class="message-text" wx:if="{{item.content}}">{{item.content}}</text>
+        </view>
+        <text class="message-time">{{item.timestamp ? item.timestamp : ''}}</text>
       </view>
     </view>
     
     <!-- 加载中提示 -->
     <view class="typing" wx:if="{{isTyping}}">
-      <text>艾登斯正在回复...</text>
+      <view class="typing-avatar">
+        <text class="avatar-icon">🤖</text>
+      </view>
+      <view class="typing-dots">
+        <view class="dot"></view>
+        <view class="dot"></view>
+        <view class="dot"></view>
+      </view>
     </view>
   </scroll-view>
 
+  <!-- 图片预览区 -->
+  <view class="pending-images" wx:if="{{pendingImages.length > 0}}">
+    <view class="pending-image-item" wx:for="{{pendingImages}}" wx:key="index">
+      <image src="{{item}}" mode="aspectFill" class="pending-image" />
+      <view class="remove-image" bindtap="removePendingImage" data-index="{{index}}">
+        <text>×</text>
+      </view>
+    </view>
+  </view>
+
   <!-- 输入区域 -->
   <view class="input-area">
-    <input 
-      class="input" 
-      type="text" 
-      value="{{input}}" 
-      bindinput="onInput" 
-      placeholder="请输入消息..."
-      confirm-type="send"
-      bindconfirm="sendMessage"
-    />
-    <button class="send-btn" bindtap="sendMessage">
-      <text>发送</text>
-    </button>
+    <view class="input-container">
+      <view class="input-actions">
+        <view class="action-btn" bindtap="chooseImage">
+          <text class="icon">📷</text>
+        </view>
+      </view>
+      
+      <textarea 
+        class="input" 
+        value="{{input}}" 
+        bindinput="onInput" 
+        placeholder="输入消息..."
+        confirm-type="send"
+        bindconfirm="sendMessage"
+        auto-height
+        maxlength="500"
+      />
+      
+      <view class="send-btn {{input.trim() || pendingImages.length > 0 ? 'active' : ''}}" bindtap="sendMessage">
+        <text class="icon">➤</text>
+      </view>
+    </view>
   </view>
 </view>

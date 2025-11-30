@@ -1,12 +1,33 @@
 {
   "pages": [
-    "pages/index/index"
+    "pages/index/index",
+    "pages/dashboard/dashboard"
   ],
   "window": {
     "backgroundTextStyle": "light",
     "navigationBarBackgroundColor": "#667eea",
     "navigationBarTitleText": "AIDANCE",
     "navigationBarTextStyle": "white"
+  },
+  "tabBar": {
+    "color": "#94a3b8",
+    "selectedColor": "#667eea",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "对话",
+        "iconPath": "/images/chat.png",
+        "selectedIconPath": "/images/chat-active.png"
+      },
+      {
+        "pagePath": "pages/dashboard/dashboard",
+        "text": "统计",
+        "iconPath": "/images/chart.png",
+        "selectedIconPath": "/images/chart-active.png"
+      }
+    ]
   },
   "style": "v2",
   "sitemapLocation": "sitemap.json"
