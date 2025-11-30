@@ -1,3 +1,5 @@
 {
-  "navigationBarTitleText": "AIDANCE"
+  "navigationBarTitleText": "AIDANCE",
+  "navigationStyle": "default",
+  "enablePullDownRefresh": false
 }
