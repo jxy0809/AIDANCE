@@ -1,9 +1,52 @@
 /* WebView 占满整个页面 */
 page {
   height: 100%;
+  background-color: #667eea;
 }
 
 web-view {
   width: 100%;
   height: 100%;
+}
+
+/* 加载提示 */
+.container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  z-index: 9999;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20rpx;
+  padding: 60rpx;
+}
+
+.title {
+  font-size: 56rpx;
+  font-weight: bold;
+  color: #ffffff;
+  margin-bottom: 20rpx;
+}
+
+.tip {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.hint {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+  margin-top: 40rpx;
+  line-height: 1.6;
 }
