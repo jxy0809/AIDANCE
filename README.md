@@ -1,20 +1,68 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# AIDANCE (艾登斯) - 智能生活管家
 
-# Run and deploy your AI Studio app
+## 简介
+AIDANCE 是一款基于 AI 的智能生活记录助手。您的私人管家“艾登斯”会通过风趣幽默的对话，帮您自动整理每日的心情、消费和记事。告别繁琐的表单填空，记录生活就像聊天一样简单。
 
-This contains everything you need to run your app locally.
+## 核心特点
+*   **🧙‍♂️ 独特人设**: 艾登斯不是冷冰冰的机器人，他幽默、毒舌且热心（口头禅：“噗”、“bur”），让记录过程充满乐趣。
+*   **🗣️ 自然语言交互**: 支持文字、语音、图片输入。
+    *   *“刚买咖啡花了35”* -> 自动记账。
+    *   *“今天被老板夸了，开心”* -> 自动记录心情。
+*   **📊 智能统计**: 自动生成消费图表、心情回顾流，支持标签筛选。
+*   **💰 预算管家**: 设置月度预算，超支时艾登斯会及时发出“善意”的提醒。
 
-View your app in AI Studio: https://ai.studio/apps/drive/1i37wsje-FF89pqO3rpKwFfUDSGeXY-JK
+## 功能使用指南
 
-## Run Locally
+### 1. 对话 (Chat)
+*   **文字记录**: 直接输入发生的事情，支持一次输入多条（如：“打车20，吃饭50”）。
+*   **语音输入**: 点击底部的 **🎤 麦克风** 图标开始录音，**再次点击** 或 **话说完** 后自动停止并发送。
+*   **图片识别**: 点击相册图标上传图片（如购物小票、风景照），艾登斯会分析图片内容并记录。
 
-**Prerequisites:**  Node.js
+### 2. 统计 (Statistics)
+*   **预算设置**: 点击顶部的预算卡片右上角的 **⚙️ 设置** 按钮，输入您的本月总预算。
+*   **数据筛选**: 通过顶部的 `全部 | 心情 | 消费 | 记事` 选项卡切换视图。
+*   **分类过滤**: 在选中某一类型（如消费）后，可点击下方的次级标签（如“餐饮”、“交通”）进行精确筛选。
+*   **清空数据**: 列表底部提供清空数据的入口（请谨慎操作）。
 
+---
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 开发与部署
+
+本项目包含三个版本的实现代码，分别适配不同的开发需求：
+
+### 1. Web 版本 (React)
+位于项目根目录。
+*   **技术栈**: React 19, Tailwind CSS, Google GenAI SDK (适配智谱 API)。
+*   **配置**:
+    *   API Key 配置在 `services/geminiService.ts`。
+*   **运行**: 这是一个纯静态 Web 应用（无后端），可以直接部署到 Vercel、Netlify 或 GitHub Pages。
+
+### 2. 微信小程序原生版 (Miniprogram)
+位于 `miniprogram/` 目录。
+*   **技术栈**: WXML, WXSS, JS, 微信云开发。
+*   **配置**:
+    *   API Key 配置在 `miniprogram/utils/gemini.js`。
+*   **运行**:
+    1. 下载微信开发者工具。
+    2. 选择“导入项目”，目录指向 `miniprogram/` 文件夹。
+    3. 确保开启“云开发”并配置好 `login` 云函数（用于获取 OpenID）。
+
+### 3. Taro 跨端版本
+位于 `Taro/` 目录。
+*   **技术栈**: Taro + React。
+*   **配置**:
+    *   API Key 配置在 `Taro/src/utils/gemini.ts`。
+*   **开发命令**:
+    ```bash
+    cd Taro
+    npm install
+    npm run dev:weapp  # 编译为微信小程序
+    ```
+*   **调试**: 编译完成后，使用微信开发者工具导入 `Taro/dist` 目录。
+
+## 注意事项
+*   本项目默认使用 **智谱 AI (GLM-4V-Flash)** 模型接口（兼容 OpenAI 格式），以确保在中国大陆地区的稳定访问。
+*   请在代码中替换为您自己的 API Key 以保证服务可用性。
+
+---
+*Created by AIDANCE Team*
