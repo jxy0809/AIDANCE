@@ -1,1 +1,31 @@
-<web-view src="{{webUrl}}"></web-view>
+<view class="chat-container">
+  <!-- 消息列表 -->
+  <scroll-view class="messages" scroll-y="true" scroll-into-view="{{scrollToView}}">
+    <view class="message {{item.role}}" wx:for="{{messages}}" wx:key="id" id="msg-{{index}}">
+      <view class="message-content">
+        <text>{{item.content}}</text>
+      </view>
+    </view>
+    
+    <!-- 加载中提示 -->
+    <view class="typing" wx:if="{{isTyping}}">
+      <text>艾登斯正在回复...</text>
+    </view>
+  </scroll-view>
+
+  <!-- 输入区域 -->
+  <view class="input-area">
+    <input 
+      class="input" 
+      type="text" 
+      value="{{input}}" 
+      bindinput="onInput" 
+      placeholder="请输入消息..."
+      confirm-type="send"
+      bindconfirm="sendMessage"
+    />
+    <button class="send-btn" bindtap="sendMessage">
+      <text>发送</text>
+    </button>
+  </view>
+</view>
