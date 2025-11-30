@@ -1,31 +1,31 @@
 {
   "pages": [
-    "pages/index/index",
+    "pages/chat/chat",
     "pages/dashboard/dashboard"
   ],
   "window": {
     "backgroundTextStyle": "light",
-    "navigationBarBackgroundColor": "#667eea",
+    "navigationBarBackgroundColor": "#ffffff",
     "navigationBarTitleText": "AIDANCE",
-    "navigationBarTextStyle": "white"
+    "navigationBarTextStyle": "black"
   },
   "tabBar": {
     "color": "#94a3b8",
-    "selectedColor": "#667eea",
+    "selectedColor": "#6366f1",
     "backgroundColor": "#ffffff",
     "borderStyle": "white",
     "list": [
       {
-        "pagePath": "pages/index/index",
+        "pagePath": "pages/chat/chat",
         "text": "对话",
-        "iconPath": "images/chat.png",
-        "selectedIconPath": "images/chat-active.png"
+        "iconPath": "assets/chat.png",
+        "selectedIconPath": "assets/chat-active.png"
       },
       {
         "pagePath": "pages/dashboard/dashboard",
         "text": "统计",
-        "iconPath": "images/chart.png",
-        "selectedIconPath": "images/chart-active.png"
+        "iconPath": "assets/chart.png",
+        "selectedIconPath": "assets/chart-active.png"
       }
     ]
   },

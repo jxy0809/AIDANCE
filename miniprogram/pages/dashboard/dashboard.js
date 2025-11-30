@@ -1,239 +1,168 @@
-// pages/dashboard/dashboard.js
-const { storageService, RecordType } = require('../../utils/storage.js')
+const { getRecords, getBudgetConfig, saveBudgetConfig, clearData } = require('../../utils/storage');
+
+// Colors for charts
+const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#10b981', '#3b82f6', '#f59e0b'];
 
 Page({
   data: {
-    records: [],
     activeTab: 'all',
+    tabs: [
+      {id: 'all', label: '全部'},
+      {id: 'mood', label: '心情'},
+      {id: 'expense', label: '消费'},
+      {id: 'event', label: '记事'}
+    ],
     filterCategory: 'all',
-    budgetConfig: { totalBudget: 0, categoryBudgets: {} },
-    showBudgetModalFlag: false,
-    tempBudget: { totalBudget: 0, categoryBudgets: {} },
-    commonCategories: ['餐饮', '交通', '购物', '娱乐', '居家', '其他'],
-    
-    // 计算属性
-    moodRecords: [],
-    expenseRecords: [],
-    eventRecords: [],
-    currentMonthExpenses: [],
-    totalSpentMonth: 0,
-    budgetProgress: 0,
-    expenseByCategory: [],
-    maxExpenseValue: 0,
-    allCategories: [],
+    categories: [],
+    records: [],
     filteredRecords: [],
-    
-    // 颜色配置
-    colors: ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#10b981', '#3b82f6', '#f59e0b']
-  },
-
-  onLoad() {
-    this.loadData()
+    budgetConfig: { totalBudget: 0, categoryBudgets: {} },
+    totalSpent: 0,
+    budgetProgress: 0,
+    chartData: [],
+    showBudgetModal: false,
+    tempTotalBudget: 0
   },
 
   onShow() {
-    this.loadData()
+    this.refreshData();
   },
 
-  loadData() {
-    // 获取所有记录
-    const records = storageService.getRecords()
-    this.setData({ records })
+  refreshData() {
+    const records = getRecords().sort((a, b) => b.timestamp - a.timestamp);
+    const budgetConfig = getBudgetConfig();
     
-    // 获取预算配置
-    const budgetConfig = storageService.getBudgetConfig()
+    // Process records for display
+    const processedRecords = records.map(r => {
+      const d = new Date(r.timestamp);
+      let displayTags = [];
+      if (r.type === 'MOOD') displayTags = r.tags;
+      if (r.type === 'EXPENSE') displayTags = [r.category];
+      if (r.type === 'EVENT') displayTags = [r.category];
+
+      return {
+        ...r,
+        month: d.getMonth() + 1,
+        day: d.getDate(),
+        time: d.toLocaleTimeString('zh-CN', {hour: '2-digit', minute:'2-digit'}),
+        displayTags
+      };
+    });
+
     this.setData({ 
+      records: processedRecords,
       budgetConfig,
-      tempBudget: JSON.parse(JSON.stringify(budgetConfig)) // 深拷贝
-    })
-    
-    // 触发计算
-    this.calculateData()
+      tempTotalBudget: budgetConfig.totalBudget
+    });
+
+    this.calculateStats();
+    this.applyFilters();
   },
 
-  calculateData() {
-    const { records, budgetConfig, activeTab } = this.data
+  calculateStats() {
+    const { records, budgetConfig } = this.data;
+    const now = new Date();
     
-    // 分类记录
-    const moodRecords = records.filter(r => r.type === RecordType.MOOD)
-    const expenseRecords = records.filter(r => r.type === RecordType.EXPENSE)
-    const eventRecords = records.filter(r => r.type === RecordType.EVENT)
-    
-    // 当月消费
-    const now = new Date()
+    const expenseRecords = records.filter(r => r.type === 'EXPENSE');
     const currentMonthExpenses = expenseRecords.filter(r => {
-      const d = new Date(r.timestamp)
-      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-    })
-    
-    // 总消费
-    const totalSpentMonth = currentMonthExpenses.reduce((acc, curr) => acc + curr.amount, 0)
-    
-    // 预算进度
-    const budgetProgress = budgetConfig.totalBudget > 0 ? (totalSpentMonth / budgetConfig.totalBudget) * 100 : 0
-    
-    // 消费分类统计
-    const categoryMap = {}
+      const d = new Date(r.timestamp);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+
+    const totalSpent = currentMonthExpenses.reduce((acc, curr) => acc + curr.amount, 0);
+    const budgetProgress = budgetConfig.totalBudget > 0 ? ((totalSpent / budgetConfig.totalBudget) * 100).toFixed(0) : 0;
+
+    // Chart Data
+    const map = {};
     currentMonthExpenses.forEach(e => {
-      categoryMap[e.category] = (categoryMap[e.category] || 0) + e.amount
-    })
+      map[e.category] = (map[e.category] || 0) + e.amount;
+    });
+
+    // Sort and calculate percent
+    const sorted = Object.entries(map).sort((a, b) => b[1] - a[1]);
+    const maxVal = sorted.length > 0 ? sorted[0][1] : 1;
     
-    const expenseByCategory = Object.entries(categoryMap)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
-    
-    const maxExpenseValue = expenseByCategory.length > 0 ? 
-      Math.max(...expenseByCategory.map(item => item.value)) : 0
-    
-    // 所有分类
-    const cats = new Set()
-    if (activeTab === 'expense') {
-      expenseRecords.forEach(r => cats.add(r.category))
-    } else if (activeTab === 'event') {
-      eventRecords.forEach(r => cats.add(r.category))
-    } else if (activeTab === 'mood') {
-      moodRecords.forEach(r => r.tags.forEach(t => cats.add(t)))
+    const chartData = sorted.map(([name, value], index) => ({
+      name,
+      value,
+      percent: (value / maxVal) * 100, // Relative to max for visual bar
+      color: COLORS[index % COLORS.length]
+    }));
+
+    this.setData({ totalSpent, budgetProgress, chartData });
+  },
+
+  applyFilters() {
+    const { records, activeTab, filterCategory } = this.data;
+    let result = records;
+
+    if (activeTab === 'mood') result = result.filter(r => r.type === 'MOOD');
+    if (activeTab === 'expense') result = result.filter(r => r.type === 'EXPENSE');
+    if (activeTab === 'event') result = result.filter(r => r.type === 'EVENT');
+
+    // Extract categories for current tab
+    const cats = new Set();
+    result.forEach(r => {
+      if (r.type === 'EXPENSE') cats.add(r.category);
+      if (r.type === 'EVENT') cats.add(r.category);
+      if (r.type === 'MOOD') r.tags.forEach(t => cats.add(t));
+    });
+
+    if (filterCategory !== 'all') {
+      result = result.filter(r => {
+        if (r.type === 'EXPENSE') return r.category === filterCategory;
+        if (r.type === 'EVENT') return r.category === filterCategory;
+        if (r.type === 'MOOD') return r.tags.includes(filterCategory);
+        return false;
+      });
     }
-    const allCategories = Array.from(cats)
-    
-    // 筛选记录
-    let base = records
-    if (activeTab === 'mood') base = moodRecords
-    if (activeTab === 'expense') base = expenseRecords
-    if (activeTab === 'event') base = eventRecords
-    
-    let filteredRecords = base
-    if (this.data.filterCategory !== 'all') {
-      filteredRecords = base.filter(r => {
-        if (r.type === RecordType.EXPENSE) return r.category === this.data.filterCategory
-        if (r.type === RecordType.EVENT) return r.category === this.data.filterCategory
-        if (r.type === RecordType.MOOD) return r.tags.includes(this.data.filterCategory)
-        return false
-      })
-    }
-    
-    filteredRecords = [...filteredRecords].sort((a, b) => b.timestamp - a.timestamp)
-    
-    // 更新数据
-    this.setData({
-      moodRecords,
-      expenseRecords,
-      eventRecords,
-      currentMonthExpenses,
-      totalSpentMonth,
-      budgetProgress,
-      expenseByCategory,
-      maxExpenseValue,
-      allCategories,
-      filteredRecords
-    })
+
+    this.setData({ 
+      filteredRecords: result,
+      categories: Array.from(cats)
+    });
   },
 
   switchTab(e) {
-    const tab = e.currentTarget.dataset.tab
-    this.setData({
-      activeTab: tab,
-      filterCategory: 'all'
-    })
-    this.calculateData()
+    const id = e.currentTarget.dataset.id;
+    this.setData({ activeTab: id, filterCategory: 'all' }, () => {
+      this.applyFilters();
+    });
   },
 
-  filterByCategory(e) {
-    const category = e.currentTarget.dataset.category
-    this.setData({ filterCategory: category })
-    this.calculateData()
+  setCategory(e) {
+    const cat = e.currentTarget.dataset.cat;
+    this.setData({ filterCategory: cat }, () => {
+      this.applyFilters();
+    });
   },
 
-  showBudgetModal() {
-    this.setData({ 
-      showBudgetModalFlag: true,
-      tempBudget: JSON.parse(JSON.stringify(this.data.budgetConfig))
-    })
+  toggleBudgetModal() {
+    this.setData({ showBudgetModal: !this.data.showBudgetModal });
   },
 
-  hideBudgetModal() {
-    this.setData({ showBudgetModalFlag: false })
+  onTotalBudgetChange(e) {
+    this.setData({ tempTotalBudget: Number(e.detail.value) });
   },
 
-  onBudgetInput(e) {
-    const value = e.detail.value
-    this.setData({
-      'tempBudget.totalBudget': Number(value)
-    })
+  saveBudget() {
+    const newConfig = { ...this.data.budgetConfig, totalBudget: this.data.tempTotalBudget };
+    saveBudgetConfig(newConfig);
+    this.setData({ budgetConfig: newConfig, showBudgetModal: false });
+    this.calculateStats();
   },
 
-  onCategoryBudgetInput(e) {
-    const category = e.currentTarget.dataset.category
-    const value = e.detail.value
-    const tempBudget = this.data.tempBudget
-    tempBudget.categoryBudgets[category] = Number(value) || 0
-    this.setData({ tempBudget })
-  },
-
-  saveBudgetConfig() {
-    storageService.saveBudgetConfig(this.data.tempBudget)
-    this.setData({ 
-      budgetConfig: this.data.tempBudget,
-      showBudgetModalFlag: false
-    })
-    this.calculateData()
-    wx.showToast({ title: '保存成功', icon: 'success' })
-  },
-
-  clearData() {
+  clearAllData() {
     wx.showModal({
       title: '确认清空',
-      content: '确定要清空所有数据吗？此操作无法撤销。',
+      content: '确定要删除所有记录吗？不可恢复。',
       success: (res) => {
         if (res.confirm) {
-          storageService.clearData()
-          this.setData({
-            records: [],
-            moodRecords: [],
-            expenseRecords: [],
-            eventRecords: [],
-            currentMonthExpenses: [],
-            totalSpentMonth: 0,
-            budgetProgress: 0,
-            expenseByCategory: [],
-            maxExpenseValue: 0,
-            allCategories: [],
-            filteredRecords: []
-          })
-          wx.showToast({ title: '已清空', icon: 'success' })
+          clearData();
+          this.refreshData();
+          wx.showToast({ title: '已清空', icon: 'success' });
         }
       }
-    })
-  },
-
-  // 工具函数
-  getMonth(timestamp) {
-    return new Date(timestamp).getMonth() + 1
-  },
-
-  getDay(timestamp) {
-    return new Date(timestamp).getDate()
-  },
-
-  formatTime(timestamp) {
-    const date = new Date(timestamp)
-    return date.toLocaleTimeString('zh-CN', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    })
-  },
-
-  getTags(record) {
-    if (record.type === RecordType.MOOD) {
-      return record.tags || []
-    }
-    return []
-  },
-
-  getTagClass(record, tag) {
-    if (record.type === RecordType.MOOD) {
-      return 'mood-tag'
-    }
-    return ''
+    });
   }
-})
+});

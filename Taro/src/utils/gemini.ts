@@ -1,4 +1,5 @@
 
+import Taro from '@tarojs/taro'
 
 const API_KEY = '6f3fe433cc4a492ab5e0c0c8ea995b3f.2Q2NYAKTZQnZP7U0'; 
 const API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
@@ -15,47 +16,32 @@ const SYSTEM_INSTRUCTION = `
 - 多用**反问句**来增强幽默感。例如："不会真就把这破班当命上吧？"
 - 拒绝机械生硬，在确认记录的同时，给出有趣的点评。
 
-任务：
-1.  **分析** 用户的消息。注意：用户可能在一段话中包含**多个**不同的记录。
-2.  **提取** 所有相关数据，放入对应的数组中（moods, expenses, events）。
-    *   **数值转换**: 必须将中文数字转换为阿拉伯数字 (例如: "一万一" -> 11000)。
-3.  **分类规则**:
-    *   **EXPENSE (消费)**: 归类为: 餐饮, 交通, 购物, 娱乐, 居家, 医疗, 其他。
-    *   **EVENT (事件)**: 归类为: 工作, 学习, 娱乐, 社交, 生活。
-    *   **MOOD (心情)**: 提取或生成标签。
-4.  **回复**: 结合人设确认已记录的内容。
+1.  **分析** 用户的消息（可能包含文字和图片）。
+2.  **分类** 为以下三种之一：
+    *   **MOOD (心情)**: 用户表达情绪。请自动提取或生成合适的标签(tags)。
+    *   **EXPENSE (消费)**: 用户提到花钱。请归类为: 餐饮, 交通, 购物, 娱乐, 居家, 其他。
+    *   **EVENT (事件/记事)**: 用户提到发生的活动。请归类为: 工作, 学习, 娱乐, 社交, 生活。
+    *   **NONE**: 闲聊或无法识别。
+3.  **提取** 相关数据。
+4.  **回复** 像一位真正的、风趣的管家。
 
 **重要：请务必返回纯净的 JSON 字符串，不要包含 Markdown 标记（如 \`\`\`json）。**
-JSON 格式需包含: 
-{
-  "reply": "...",
-  "moods": [],
-  "expenses": [],
-  "events": []
-}
+JSON 格式需包含: reply, detectedType, moodData, expenseData, eventData。
 `;
 
-const sendMessageToButler = (history, newMessage, newImages) => {
-  return new Promise((resolve, reject) => {
-    if (!API_KEY || API_KEY === 'YOUR_API_KEY_HERE') {
-      resolve({
-        reply: "噗，钥匙没配好（缺少 API Key），进不去门啊。",
-        moods: [], expenses: [], events: []
-      });
-      return;
-    }
-
+export const sendMessageToButler = (history: any[], newMessage: string, newImages?: string[]) => {
+  return new Promise<any>((resolve, reject) => {
+    
     // Convert History to OpenAI/Zhipu format
-    const messages = [
+    const messages: any[] = [
         { role: 'system', content: SYSTEM_INSTRUCTION }
     ];
 
     history.forEach(h => {
         const role = h.role === 'model' ? 'assistant' : 'user';
-        const content = [];
-        // Handle parts from local storage structure
+        const content: any[] = [];
         if (h.parts) {
-            h.parts.forEach(p => {
+            h.parts.forEach((p: any) => {
                 if (p.text) content.push({ type: 'text', text: p.text });
             });
         }
@@ -65,7 +51,7 @@ const sendMessageToButler = (history, newMessage, newImages) => {
     });
 
     // Current Message
-    const currentContent = [];
+    const currentContent: any[] = [];
     if (newMessage) {
         currentContent.push({ type: 'text', text: newMessage });
     }
@@ -85,7 +71,7 @@ const sendMessageToButler = (history, newMessage, newImages) => {
         messages.push({ role: 'user', content: currentContent });
     }
 
-    wx.request({
+    Taro.request({
       url: API_URL,
       method: 'POST',
       data: {
@@ -115,23 +101,19 @@ const sendMessageToButler = (history, newMessage, newImages) => {
             console.error("Parse error", e);
             resolve({ 
                 reply: res.data.choices[0].message.content || "bur，这回我是真没听懂。", 
-                moods: [], expenses: [], events: []
+                detectedType: 'NONE' 
             });
           }
         } else {
           console.error("API Error", res);
           const errorMsg = res.data && res.data.error && res.data.error.message ? res.data.error.message : "网络连接异常";
-          resolve({ reply: `噗，服务器罢工了 (${errorMsg})。`, moods: [], expenses: [], events: [] });
+          resolve({ reply: `噗，服务不可用 (${errorMsg})。`, detectedType: 'NONE' });
         }
       },
       fail: (err) => {
         console.error("Request failed", err);
-        resolve({ reply: "噗，网断了，请检查网络设置。", moods: [], expenses: [], events: [] });
+        resolve({ reply: "噗，网断了，请检查网络设置。", detectedType: 'NONE' });
       }
     });
   });
-};
-
-module.exports = {
-  sendMessageToButler
 };

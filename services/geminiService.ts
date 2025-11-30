@@ -33,98 +33,64 @@ JSON 输出格式:
 如果没有任何记录，数组留空。
 `;
 
-// Replace with your Zhipu AI API Key if needed, or stick to the proxy pattern
-// Ideally this should come from env, but for this demo context we use the direct fetch pattern compatible with the provided key type.
-// Since the user previously asked to switch to Zhipu via fetch in geminiService.ts, I will maintain that pattern here
-// but ensure the prompts are updated.
-
-const API_KEY = '6f3fe433cc4a492ab5e0c0c8ea995b3f.2Q2NYAKTZQnZP7U0'; 
-const API_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
-const MODEL_NAME = 'glm-4v-flash';
-
 export const sendMessageToButler = async (
   history: { role: string; parts: { text?: string; inlineData?: any }[] }[],
   newMessage: string,
   newImages?: string[]
 ): Promise<ButlerResponse> => {
   
-  // Convert History to OpenAI/Zhipu format
-  const messages: any[] = [
-      { role: 'system', content: SYSTEM_INSTRUCTION }
-  ];
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-  history.forEach(h => {
-      const role = h.role === 'model' ? 'assistant' : 'user';
-      const content: any[] = [];
-      if (h.parts) {
-          h.parts.forEach(p => {
-              if (p.text) content.push({ type: 'text', text: p.text });
-          });
-      }
-      if (content.length > 0) {
-          messages.push({ role, content });
-      }
-  });
-
-  // Current Message
-  const currentContent: any[] = [];
+  // Current Message Parts
+  const currentParts: any[] = [];
   if (newMessage) {
-      currentContent.push({ type: 'text', text: newMessage });
+      currentParts.push({ text: newMessage });
   }
 
   if (newImages && newImages.length > 0) {
       newImages.forEach(base64 => {
-           // Zhipu expects data:image... format
-           const url = base64.startsWith('data:') ? base64 : `data:image/jpeg;base64,${base64}`;
-           currentContent.push({
-               type: 'image_url',
-               image_url: { url: url }
+           // Strip prefix to get raw base64 data for inlineData
+           const clean = base64.split(',')[1] || base64;
+           currentParts.push({
+               inlineData: {
+                   mimeType: 'image/jpeg',
+                   data: clean
+               }
            });
       });
   }
   
-  if (currentContent.length > 0) {
-      messages.push({ role: 'user', content: currentContent });
+  // Combine history and current message
+  const contents = [...history];
+  if (currentParts.length > 0) {
+      contents.push({ role: 'user', parts: currentParts });
   }
 
   try {
-    const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${API_KEY}`
-        },
-        body: JSON.stringify({
-            model: MODEL_NAME,
-            messages: messages,
-            temperature: 0.8, // Slightly higher for humor
-            max_tokens: 1024
-        })
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: contents,
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+        responseMimeType: 'application/json',
+      }
     });
 
-    const data = await response.json();
+    const text = response.text;
+    if (!text) {
+        throw new Error("No response text");
+    }
 
-    if (data.choices && data.choices[0]) {
-        let text = data.choices[0].message.content;
-        // Clean markdown
-        text = text.replace(/```json\n?|```/g, "").trim();
-        
-        // Attempt to extract JSON
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) text = jsonMatch[0];
-
-        try {
-            const parsed: ButlerResponse = JSON.parse(text);
-            return parsed;
-        } catch (e) {
-            console.error("JSON Parse Error", text);
-            return {
-                reply: text || "bur，脑子有点短路，没听懂。",
-                moods: [], expenses: [], events: []
-            };
-        }
-    } else {
-        throw new Error(data.error?.message || "API Error");
+    try {
+        const parsed: ButlerResponse = JSON.parse(text);
+        return parsed;
+    } catch (e) {
+        console.error("JSON Parse Error", text);
+        // Fallback in case of parse error
+         return {
+            reply: text || "bur，脑子有点短路，没听懂。",
+            moods: [], expenses: [], events: []
+        };
     }
 
   } catch (error) {
