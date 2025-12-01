@@ -115,6 +115,7 @@ const App: React.FC = () => {
         >
           <DashboardView 
             records={records} 
+            onAddRecord={handleNewRecord}
             onClearData={handleClearData} 
             onDeleteRecord={handleDeleteRecord}
           />
