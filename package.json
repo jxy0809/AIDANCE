@@ -14,8 +14,11 @@
     "@google/genai": "^1.30.0",
     "lucide-react": "^0.554.0",
     "recharts": "^3.4.1",
-    "@tarojs/components": "^4.1.8",
-    "@tarojs/taro": "^4.1.8"
+    "@tarojs/components": "^4.1.9",
+    "@tarojs/taro": "^4.1.9",
+    "path": "^0.12.7",
+    "vite": "^7.2.4",
+    "@vitejs/plugin-react": "^5.1.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

@@ -1,7 +1,8 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { AppRecord, RecordType, MoodRecord, ExpenseRecord, EventRecord, BudgetConfig } from '../types';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
-import { DollarSign, Calendar, Trash2, Settings, X, Tag } from 'lucide-react';
+import { DollarSign, Calendar, Trash2, Settings, X, Tag, Inbox } from 'lucide-react';
 import { getBudgetConfig, saveBudgetConfig } from '../services/storageService';
 
 interface DashboardViewProps {
@@ -325,9 +326,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ records, onClearDa
             {/* List Content */}
             <div className="space-y-4 min-h-[200px]">
               {filteredRecords.length === 0 ? (
-                <div className="flex flex-col items-center justify-center text-slate-400 py-10 opacity-60 animate-fade-in-up stagger-4">
-                   <div className="w-16 h-16 bg-slate-200 rounded-full mb-4"></div>
-                   <p className="font-medium">暂无记录</p>
+                <div className="flex flex-col items-center justify-center text-slate-400 py-12 opacity-60 animate-fade-in-up stagger-4">
+                   <div className="w-20 h-20 bg-slate-100 rounded-full mb-4 flex items-center justify-center shadow-sm">
+                      <Inbox size={32} strokeWidth={1.5} className="text-slate-400" />
+                   </div>
+                   <p className="font-medium text-slate-500">暂无记录</p>
                 </div>
               ) : (
                 filteredRecords.map(renderRecordItem)

@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Bot, User, Mic, Image as ImageIcon, X, AlertCircle } from 'lucide-react';
-import { Message, AppRecord, ButlerResponse, RecordType, BudgetConfig } from '../types';
+import { Message, AppRecord, ButlerResponse, RecordType, BudgetConfig, TodoItem } from '../types';
 import { sendMessageToButler } from '../services/geminiService';
-import { saveRecord, saveMessages, getMessages, getBudgetConfig, getRecords } from '../services/storageService';
+import { saveRecord, saveMessages, getMessages, getBudgetConfig, getRecords, addTodo } from '../services/storageService';
 
 interface ChatViewProps {
   onNewRecord: (record: AppRecord) => void;
+  onNewTodo: (todo: TodoItem) => void;
 }
 
 // Helper to generate IDs without external dependency
@@ -41,7 +42,7 @@ const compressImage = (file: File): Promise<string> => {
   });
 };
 
-export const ChatView: React.FC<ChatViewProps> = ({ onNewRecord }) => {
+export const ChatView: React.FC<ChatViewProps> = ({ onNewRecord, onNewTodo }) => {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -300,6 +301,21 @@ export const ChatView: React.FC<ChatViewProps> = ({ onNewRecord }) => {
               const newRecord = { ...base, id: generateId(), type: RecordType.EVENT, ...evt };
               saveRecord(newRecord as any);
               onNewRecord(newRecord as any);
+              hasNewRecord = true;
+          });
+      }
+
+      // 4. Todos
+      if (response.todos && response.todos.length > 0) {
+          response.todos.forEach(todo => {
+              const newTodo: TodoItem = {
+                  id: generateId(),
+                  text: todo.text,
+                  completed: false,
+                  timestamp: Date.now()
+              };
+              addTodo(newTodo);
+              onNewTodo(newTodo);
               hasNewRecord = true;
           });
       }

@@ -1,10 +1,11 @@
 
-import { AppRecord, Message, BudgetConfig } from '../types';
+import { AppRecord, Message, BudgetConfig, TodoItem } from '../types';
 
 const STORAGE_KEYS = {
   RECORDS: 'butler_app_records',
   MESSAGES: 'butler_app_messages',
   BUDGET: 'butler_app_budget',
+  TODOS: 'butler_app_todos',
 };
 
 export const saveRecord = (record: AppRecord): void => {
@@ -47,8 +48,28 @@ export const getBudgetConfig = (): BudgetConfig => {
   return raw ? JSON.parse(raw) : { totalBudget: 0, categoryBudgets: {} };
 };
 
+export const saveTodos = (todos: TodoItem[]): void => {
+  try {
+    localStorage.setItem(STORAGE_KEYS.TODOS, JSON.stringify(todos));
+  } catch (e) {
+    console.error("Storage quota exceeded", e);
+  }
+};
+
+export const getTodos = (): TodoItem[] => {
+  const raw = localStorage.getItem(STORAGE_KEYS.TODOS);
+  return raw ? JSON.parse(raw) : [];
+};
+
+export const addTodo = (todo: TodoItem): void => {
+  const existing = getTodos();
+  const updated = [todo, ...existing];
+  saveTodos(updated);
+};
+
 export const clearData = (): void => {
   localStorage.removeItem(STORAGE_KEYS.RECORDS);
   localStorage.removeItem(STORAGE_KEYS.MESSAGES);
   localStorage.removeItem(STORAGE_KEYS.BUDGET);
+  localStorage.removeItem(STORAGE_KEYS.TODOS);
 };

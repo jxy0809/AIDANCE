@@ -1,9 +1,9 @@
 import React from 'react';
-import { MessageSquare, PieChart } from 'lucide-react';
+import { MessageSquare, PieChart, ListTodo } from 'lucide-react';
 
 interface TabBarProps {
-  activeTab: 'chat' | 'dashboard';
-  onTabChange: (tab: 'chat' | 'dashboard') => void;
+  activeTab: 'chat' | 'dashboard' | 'todo';
+  onTabChange: (tab: 'chat' | 'dashboard' | 'todo') => void;
 }
 
 export const TabBar: React.FC<TabBarProps> = ({ activeTab, onTabChange }) => {
@@ -24,6 +24,21 @@ export const TabBar: React.FC<TabBarProps> = ({ activeTab, onTabChange }) => {
             strokeWidth={2}
           />
           {activeTab === 'chat' && <span className="ml-2 text-sm font-semibold animate-pop-in">对话</span>}
+        </button>
+
+        <button
+          onClick={() => onTabChange('todo')}
+          className={`flex items-center justify-center px-6 py-3 rounded-full transition-all duration-300 active:scale-95 ${
+            activeTab === 'todo' 
+              ? 'bg-modern-primary text-white shadow-md' 
+              : 'text-modern-secondary hover:bg-slate-100'
+          }`}
+        >
+          <ListTodo
+            size={20}
+            strokeWidth={2}
+          />
+          {activeTab === 'todo' && <span className="ml-2 text-sm font-semibold animate-pop-in">待办</span>}
         </button>
 
         <button

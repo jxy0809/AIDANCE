@@ -41,6 +41,13 @@ export interface EventRecord extends BaseRecord {
 
 export type AppRecord = MoodRecord | ExpenseRecord | EventRecord;
 
+export interface TodoItem {
+  id: string;
+  text: string;
+  completed: boolean;
+  timestamp: number;
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'model';
@@ -77,5 +84,8 @@ export interface ButlerResponse {
     details: string;
     category: string;
     time: string;
+  }[];
+  todos?: {
+    text: string;
   }[];
 }
