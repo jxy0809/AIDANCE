@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Bot, User, Mic, Image as ImageIcon, X, AlertCircle } from 'lucide-react';
 import { Message, AppRecord, ButlerResponse, RecordType, BudgetConfig, TodoItem } from '../types';
@@ -8,6 +9,9 @@ import { saveRecord, saveMessages, getMessages, getBudgetConfig, getRecords, add
 interface ChatViewProps {
   onNewRecord: (record: AppRecord) => void;
   onNewTodo: (todo: TodoItem) => void;
+  todos: TodoItem[];
+  onToggleTodo: (id: string) => void;
+  onDeleteTodo: (id: string) => void;
 }
 
 // Helper to generate IDs without external dependency
@@ -42,7 +46,7 @@ const compressImage = (file: File): Promise<string> => {
   });
 };
 
-export const ChatView: React.FC<ChatViewProps> = ({ onNewRecord, onNewTodo }) => {
+export const ChatView: React.FC<ChatViewProps> = ({ onNewRecord, onNewTodo, todos, onToggleTodo, onDeleteTodo }) => {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -249,7 +253,9 @@ export const ChatView: React.FC<ChatViewProps> = ({ onNewRecord, onNewTodo }) =>
     });
 
     try {
-      const response: ButlerResponse = await sendMessageToButler(apiHistory, userMsg.content, currentPendingImages);
+      // Pass the current todo list context to the AI
+      const todoContext = todos.map(t => ({ text: t.text, completed: t.completed }));
+      const response: ButlerResponse = await sendMessageToButler(apiHistory, userMsg.content, currentPendingImages, todoContext);
 
       const butlerMsg: Message = {
         id: generateId(),
@@ -305,7 +311,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ onNewRecord, onNewTodo }) =>
           });
       }
 
-      // 4. Todos
+      // 4. Todos (Add New)
       if (response.todos && response.todos.length > 0) {
           response.todos.forEach(todo => {
               const newTodo: TodoItem = {
@@ -317,6 +323,24 @@ export const ChatView: React.FC<ChatViewProps> = ({ onNewRecord, onNewTodo }) =>
               addTodo(newTodo);
               onNewTodo(newTodo);
               hasNewRecord = true;
+          });
+      }
+
+      // 5. Todo Updates (Delete / Complete)
+      if (response.todoUpdates && response.todoUpdates.length > 0) {
+          response.todoUpdates.forEach(update => {
+              // Find matching todo using fuzzy check or substring
+              const target = todos.find(t => t.text.includes(update.originalText) || update.originalText.includes(t.text));
+              
+              if (target) {
+                  if (update.action === 'DELETE') {
+                      onDeleteTodo(target.id);
+                  } else if (update.action === 'COMPLETE' && !target.completed) {
+                      onToggleTodo(target.id);
+                  } else if (update.action === 'UNCOMPLETE' && target.completed) {
+                      onToggleTodo(target.id);
+                  }
+              }
           });
       }
 

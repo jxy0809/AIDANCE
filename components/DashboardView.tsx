@@ -1,4 +1,5 @@
 
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { AppRecord, RecordType, MoodRecord, ExpenseRecord, EventRecord, BudgetConfig } from '../types';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
@@ -8,12 +9,13 @@ import { getBudgetConfig, saveBudgetConfig } from '../services/storageService';
 interface DashboardViewProps {
   records: AppRecord[];
   onClearData: () => void;
+  onDeleteRecord: (id: string) => void;
 }
 
 // Modern vibrant palette
 const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#10b981', '#3b82f6', '#f59e0b'];
 
-export const DashboardView: React.FC<DashboardViewProps> = ({ records, onClearData }) => {
+export const DashboardView: React.FC<DashboardViewProps> = ({ records, onClearData, onDeleteRecord }) => {
   const [activeTab, setActiveTab] = useState<'all' | 'mood' | 'expense' | 'event'>('all');
   const [budgetConfig, setBudgetConfig] = useState<BudgetConfig>({ totalBudget: 0, categoryBudgets: {} });
   const [showBudgetModal, setShowBudgetModal] = useState(false);
@@ -88,7 +90,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ records, onClearDa
     const delayClass = index < 5 ? `stagger-${index + 1}` : '';
 
     return (
-      <div key={record.id} className={`bg-white p-5 rounded-2xl mb-4 shadow-soft border border-gray-50 flex gap-4 transition-transform hover:scale-[1.01] animate-fade-in-up opacity-0 ${delayClass}`}>
+      <div key={record.id} className={`bg-white p-5 rounded-2xl mb-4 shadow-soft border border-gray-50 flex gap-4 transition-transform hover:scale-[1.01] animate-fade-in-up opacity-0 ${delayClass} group relative`}>
+         
+         {/* Delete Button (Visible on hover or valid touch) */}
+         <button 
+            onClick={(e) => {
+                e.stopPropagation();
+                if (window.confirm('确定删除这条记录吗？')) {
+                    onDeleteRecord(record.id);
+                }
+            }}
+            className="absolute top-2 right-2 p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+         >
+            <X size={16} />
+         </button>
+
          {/* Date Box */}
          <div className="flex flex-col items-center justify-center bg-slate-50 rounded-xl w-14 h-14 shrink-0 text-slate-500">
              <span className="text-xs font-bold">{month}月</span>
@@ -96,7 +112,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ records, onClearDa
          </div>
             
          {/* Content */}
-         <div className="flex-1 min-w-0">
+         <div className="flex-1 min-w-0 pr-6">
              <div className="flex justify-between items-start">
                  <div className="flex flex-col">
                     {record.type === RecordType.MOOD && (

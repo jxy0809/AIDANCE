@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { ChatView } from './components/ChatView';
 import { DashboardView } from './components/DashboardView';
 import { TodoView } from './components/TodoView';
 import { TabBar } from './components/TabBar';
-import { getRecords, clearData, getTodos, saveTodos } from './services/storageService';
+import { getRecords, clearData, getTodos, saveTodos, saveRecords } from './services/storageService';
 import { AppRecord, TodoItem } from './types';
 
 const App: React.FC = () => {
@@ -21,15 +22,19 @@ const App: React.FC = () => {
     setRecords(prev => [record, ...prev]);
   };
 
+  const handleDeleteRecord = (id: string) => {
+    const updated = records.filter(r => r.id !== id);
+    setRecords(updated);
+    saveRecords(updated);
+  };
+
+  // Called when AI adds a new todo
   const handleNewTodo = (todo: TodoItem) => {
-    setTodos(prev => {
-       const updated = [todo, ...prev];
-       // We only update state here, persistence is handled in ChatView via addTodo or we can sync it here.
-       // Since ChatView calls addTodo directly to storage, we just update local state.
-       // However, to be safe and consistent with manual actions, let's sync state -> storage here if needed, 
-       // but addTodo already saved it. So just updating state is enough.
-       return updated;
-    });
+    setTodos(prev => [todo, ...prev]);
+    // Note: AI also saves to storage in ChatView logic via addTodo if ChatView calls it, 
+    // but ChatView in new code calls handleNewTodo. Let's ensure logic is consistent.
+    // In ChatView new logic: it calls addTodo(storage) AND onNewTodo(state).
+    // So here we just update state.
   };
 
   const handleManualAddTodo = (text: string) => {
@@ -75,7 +80,13 @@ const App: React.FC = () => {
               : 'opacity-0 -translate-x-[20%] scale-95 z-0 pointer-events-none'
           }`}
         >
-          <ChatView onNewRecord={handleNewRecord} onNewTodo={handleNewTodo} />
+          <ChatView 
+            onNewRecord={handleNewRecord} 
+            onNewTodo={handleNewTodo}
+            todos={todos}
+            onToggleTodo={handleToggleTodo}
+            onDeleteTodo={handleDeleteTodo}
+          />
         </div>
         
         {/* Todo View Container */}
@@ -102,7 +113,11 @@ const App: React.FC = () => {
               : 'opacity-0 translate-x-[20%] scale-95 z-0 pointer-events-none'
           }`}
         >
-          <DashboardView records={records} onClearData={handleClearData} />
+          <DashboardView 
+            records={records} 
+            onClearData={handleClearData} 
+            onDeleteRecord={handleDeleteRecord}
+          />
         </div>
 
       </div>

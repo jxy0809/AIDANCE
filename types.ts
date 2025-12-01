@@ -88,4 +88,9 @@ export interface ButlerResponse {
   todos?: {
     text: string;
   }[];
+  // Operations on existing todos
+  todoUpdates?: {
+    originalText: string; // The text to match in the existing list
+    action: 'DELETE' | 'COMPLETE' | 'UNCOMPLETE';
+  }[];
 }

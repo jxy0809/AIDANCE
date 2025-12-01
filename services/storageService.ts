@@ -1,4 +1,5 @@
 
+
 import { AppRecord, Message, BudgetConfig, TodoItem } from '../types';
 
 const STORAGE_KEYS = {
@@ -16,6 +17,14 @@ export const saveRecord = (record: AppRecord): void => {
   } catch (e) {
     console.error("Storage quota exceeded", e);
     alert("存储空间已满，请清理旧数据或减少图片使用。");
+  }
+};
+
+export const saveRecords = (records: AppRecord[]): void => {
+  try {
+    localStorage.setItem(STORAGE_KEYS.RECORDS, JSON.stringify(records));
+  } catch (e) {
+    console.error("Storage quota exceeded", e);
   }
 };
 
