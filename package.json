@@ -14,8 +14,8 @@
     "@google/genai": "^1.30.0",
     "lucide-react": "^0.554.0",
     "recharts": "^3.4.1",
-    "@tarojs/components": "^4.1.9",
-    "@tarojs/taro": "^4.1.9"
+    "@tarojs/components": "^4.1.8",
+    "@tarojs/taro": "^4.1.8"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
